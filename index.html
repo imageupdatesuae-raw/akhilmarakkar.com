@@ -1,0 +1,19 @@
+---
+layout: default
+---
+<section class="intro">
+  <h1>Notes from someone who runs phone shops by day<br>and builds <span class="hl">AI agents</span> by night.</h1>
+  <p>{{ site.description }}</p>
+  <div class="meta"><span>{{ site.posts | size }} posts</span><span>Sharjah · Kerala</span><span>updated {{ site.time | date: '%b %Y' }}</span></div>
+</section>
+<ul class="posts">
+  {% for post in site.posts %}
+  <li>
+    <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: '%d %b %Y' }}</time>
+    <div>
+      <a class="t" href="{{ post.url | relative_url }}">{{ post.title }}</a>
+      {% if post.excerpt %}<span class="x">{{ post.excerpt | strip_html | truncate: 140 }}</span>{% endif %}
+    </div>
+  </li>
+  {% endfor %}
+</ul>
