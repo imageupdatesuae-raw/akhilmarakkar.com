@@ -12,6 +12,7 @@ layout: default
     <li class="city" data-i="6"><span class="nm">Malappuram</span><span class="tm">··:··</span><span class="cond">—</span><span class="tp">—</span></li>
   </ul>
   <div class="places-note" id="placesNote">fetching…</div>
+  <canvas class="wx-canvas" id="wxCanvas" aria-hidden="true"></canvas>
 </section>
 
 <script>
@@ -55,6 +56,8 @@ layout: default
   function paint(i, temp, code, isDay) {
     var li = nodes[i];
     if (!li) return;
+    li.dataset.code = code;
+    li.dataset.day = isDay ? "1" : "0";
     li.querySelector(".tp").textContent = Math.round(temp) + "°";
     li.querySelector(".cond").textContent = WMO[code] || "—";
     li.classList.toggle("night", isDay === 0);
@@ -84,5 +87,228 @@ layout: default
   setInterval(tickClocks, 10000);
   load();
   setInterval(load, 600000); // refresh every 10 min
+})();
+</script>
+
+<script>
+(function () {
+  var canvas = document.getElementById("wxCanvas");
+  if (!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext("2d");
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  var host = null, raf = 0, tapOff = 0, W = 0, H = 0, tick = 0, flash = 0;
+  var cfg = null, parts = [], drops = [];
+
+  function R(a, b) { return a + Math.random() * (b - a); }
+
+  // WMO code -> which effect, and how hard to turn the dials
+  function spec(c, day) {
+    c = Number(c);
+    if (c === 0)              return { kind: day ? "sun" : "stars", n: day ? 22 : 46 };
+    if (c === 1)              return { kind: day ? "sun" : "stars", n: day ? 14 : 30 };
+    if (c === 2)              return { kind: "cloud", n: 4, a: 0.22 };
+    if (c === 3)              return { kind: "cloud", n: 6, a: 0.34 };
+    if (c === 45 || c === 48) return { kind: "fog", n: 8, a: 0.36 };
+    if (c === 51)             return { kind: "rain", n: 40,  v: 3.4, len: 5,  w: 0.9 };
+    if (c === 53)             return { kind: "rain", n: 60,  v: 4.2, len: 7,  w: 1.0 };
+    if (c === 55)             return { kind: "rain", n: 85,  v: 5.2, len: 9,  w: 1.1, splash: 1 };
+    if (c === 56 || c === 57) return { kind: "freeze", n: 50, v: 3.6, len: 6, w: 1.0 };
+    if (c === 61)             return { kind: "rain", n: 70,  v: 6.0, len: 9,  w: 1.0, splash: 1 };
+    if (c === 63)             return { kind: "rain", n: 110, v: 7.4, len: 12, w: 1.2, splash: 1 };
+    if (c === 65)             return { kind: "rain", n: 155, v: 9.0, len: 15, w: 1.4, splash: 1 };
+    if (c === 66 || c === 67) return { kind: "freeze", n: 75, v: 5.0, len: 9, w: 1.2 };
+    if (c === 71)             return { kind: "snow", n: 38,  v: 0.70, r: 1.5, settle: 1 };
+    if (c === 73)             return { kind: "snow", n: 68,  v: 0.95, r: 1.9, settle: 1 };
+    if (c === 75)             return { kind: "snow", n: 105, v: 1.25, r: 2.4, settle: 1 };
+    if (c === 77)             return { kind: "snow", n: 78,  v: 1.50, r: 1.1 };
+    if (c === 80)             return { kind: "rain", n: 95,  v: 8.0,  len: 12, w: 1.2, splash: 1, gust: 1 };
+    if (c === 81)             return { kind: "rain", n: 135, v: 9.5,  len: 15, w: 1.3, splash: 1, gust: 1 };
+    if (c === 82)             return { kind: "rain", n: 180, v: 11.0, len: 18, w: 1.5, splash: 1, gust: 1 };
+    if (c === 85)             return { kind: "snow", n: 90,  v: 1.6, r: 2.2, settle: 1, gust: 1 };
+    if (c === 86)             return { kind: "snow", n: 130, v: 2.0, r: 2.8, settle: 1, gust: 1 };
+    if (c === 95 || c === 96 || c === 99)
+                              return { kind: "rain", n: 165, v: 10.0, len: 16, w: 1.4, splash: 1, storm: 1 };
+    return null;
+  }
+
+  function seed() {
+    parts = []; drops = []; flash = 0; tick = 0;
+    var i, k = cfg.kind;
+    if (k === "rain" || k === "freeze") {
+      for (i = 0; i < cfg.n; i++) parts.push({ x: R(-40, W + 40), y: R(-H, H), v: cfg.v * R(0.8, 1.25), f: 0 });
+    } else if (k === "snow") {
+      for (i = 0; i < cfg.n; i++) parts.push({ x: R(0, W), y: R(-H, H), v: cfg.v * R(0.6, 1.4), r: cfg.r * R(0.6, 1.2), p: R(0, 6.28), s: R(0.4, 1.3) });
+    } else if (k === "fog" || k === "cloud") {
+      for (i = 0; i < cfg.n; i++) parts.push({ x: R(-W, W), y: R(0, H), v: R(0.15, 0.5), w: R(W * 0.3, W * 0.8), h: k === "fog" ? R(3, 9) : R(H * 0.45, H * 0.95) });
+    } else if (k === "sun") {
+      for (i = 0; i < cfg.n; i++) parts.push({ x: R(0, W), y: R(0, H), v: R(0.10, 0.35), r: R(0.6, 1.8), p: R(0, 6.28) });
+    } else if (k === "stars") {
+      for (i = 0; i < cfg.n; i++) parts.push({ x: R(0, W), y: R(0, H), r: R(0.5, 1.3), p: R(0, 6.28), s: R(0.5, 1.6) });
+    }
+  }
+
+  function frame() {
+    var i, p, k = cfg.kind;
+    tick++;
+    ctx.clearRect(0, 0, W, H);
+
+    if (k === "rain" || k === "freeze") {
+      var g = cfg.gust ? 1 + 0.35 * Math.sin(tick / 55) : 1;
+      ctx.lineCap = "round";
+      ctx.lineWidth = cfg.w;
+      ctx.strokeStyle = "rgba(155,205,255,.78)";
+      for (i = 0; i < parts.length; i++) {
+        p = parts[i];
+        if (k === "freeze" && p.f) {            // frozen mid-air, stuck as a glassy dot
+          p.f--;
+          ctx.fillStyle = "rgba(198,230,255,.9)";
+          ctx.beginPath(); ctx.arc(p.x, p.y, cfg.w * 1.5, 0, 6.2832); ctx.fill();
+          if (!p.f) { p.y = R(-H, -2); p.x = R(-40, W + 40); }
+          continue;
+        }
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - cfg.len * 0.29, p.y - cfg.len * 0.96);
+        ctx.stroke();
+        p.y += p.v * g;
+        p.x += p.v * g * 0.30;
+        if (p.y > H) {
+          if (cfg.splash && Math.random() < 0.5) drops.push({ x: p.x, a: 1, r: R(0.8, 1.8) });
+          p.y = R(-H * 0.6, -2); p.x = R(-40, W + 40);
+        } else if (k === "freeze" && p.y > H * 0.3 && Math.random() < 0.012) {
+          p.f = 60 + (Math.random() * 60 | 0);
+        }
+      }
+      for (i = drops.length - 1; i >= 0; i--) {   // splashes on the bottom rule
+        p = drops[i];
+        ctx.fillStyle = "rgba(165,210,255," + (p.a * 0.8).toFixed(3) + ")";
+        ctx.beginPath(); ctx.arc(p.x, H - 1, p.r * (1 + (1 - p.a) * 1.6), 0, 6.2832); ctx.fill();
+        p.a -= 0.06;
+        if (p.a <= 0) drops.splice(i, 1);
+      }
+      if (cfg.storm) {
+        if (!flash && Math.random() < 0.006) flash = 10;
+        if (flash) {
+          ctx.fillStyle = "rgba(226,240,255," + (flash > 7 ? 0.5 : flash / 26).toFixed(3) + ")";
+          ctx.fillRect(0, 0, W, H);
+          flash--;
+        }
+      }
+
+    } else if (k === "snow") {
+      var gs = cfg.gust ? 1 + 0.5 * Math.sin(tick / 48) : 1;
+      ctx.fillStyle = "rgba(236,246,255,.92)";
+      for (i = 0; i < parts.length; i++) {
+        p = parts[i];
+        p.p += 0.02;
+        p.y += p.v * gs;
+        p.x += Math.sin(p.p) * p.s * 0.7 + (cfg.gust ? 0.35 : 0);
+        if (p.x < -8) p.x = W + 8; else if (p.x > W + 8) p.x = -8;
+        if (p.y > H - 1) {
+          if (cfg.settle && drops.length < 90) drops.push({ x: p.x, r: p.r, a: 1 });
+          p.y = R(-H * 0.6, -2); p.x = R(0, W);
+        }
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill();
+      }
+      for (i = drops.length - 1; i >= 0; i--) {   // settled on the bottom rule, melting slowly
+        p = drops[i];
+        ctx.fillStyle = "rgba(236,246,255," + (p.a * 0.9).toFixed(3) + ")";
+        ctx.beginPath(); ctx.arc(p.x, H - 1, p.r, 0, 6.2832); ctx.fill();
+        p.a -= 0.008;
+        if (p.a <= 0) drops.splice(i, 1);
+      }
+
+    } else if (k === "fog" || k === "cloud") {
+      var col = k === "fog" ? "215,230,245" : "120,140,165";
+      for (i = 0; i < parts.length; i++) {
+        p = parts[i];
+        p.x += p.v;
+        if (p.x > W + 20) p.x = -p.w - 20;
+        var lg = ctx.createLinearGradient(p.x, 0, p.x + p.w, 0);
+        lg.addColorStop(0, "rgba(" + col + ",0)");
+        lg.addColorStop(0.5, "rgba(" + col + "," + cfg.a + ")");
+        lg.addColorStop(1, "rgba(" + col + ",0)");
+        ctx.fillStyle = lg;
+        ctx.fillRect(p.x, k === "fog" ? p.y : (H - p.h) / 2, p.w, p.h);
+      }
+
+    } else if (k === "sun") {
+      var rg = ctx.createRadialGradient(W * 0.94, H * 0.4, 0, W * 0.94, H * 0.4, W * 0.55);
+      rg.addColorStop(0, "rgba(255,206,120,.42)");
+      rg.addColorStop(0.5, "rgba(255,190,110,.14)");
+      rg.addColorStop(1, "rgba(255,190,110,0)");
+      ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
+      for (i = 0; i < parts.length; i++) {
+        p = parts[i];
+        p.p += 0.03; p.y -= p.v; p.x += Math.sin(p.p) * 0.25;
+        if (p.y < -4) { p.y = H + R(0, 12); p.x = R(0, W); }
+        ctx.fillStyle = "rgba(255,214,140," + (0.35 + 0.35 * Math.sin(p.p)).toFixed(3) + ")";
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill();
+      }
+
+    } else if (k === "stars") {
+      for (i = 0; i < parts.length; i++) {
+        p = parts[i];
+        p.p += 0.03 * p.s;
+        ctx.fillStyle = "rgba(214,228,255," + (0.28 + 0.55 * (0.5 + 0.5 * Math.sin(p.p))).toFixed(3) + ")";
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill();
+      }
+    }
+
+    raf = requestAnimationFrame(frame);
+  }
+
+  function stop() {
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    if (tapOff) { clearTimeout(tapOff); tapOff = 0; }
+    if (host) host.classList.remove("wx-on");
+    if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+    canvas.style.display = "none";
+    host = null; cfg = null; parts = []; drops = [];
+  }
+
+  function start(li) {
+    if (reduce || host === li) return;
+    stop();
+    if (!li.classList.contains("live")) return;   // no data yet, nothing honest to draw
+    var c = spec(li.dataset.code, li.dataset.day === "1");
+    if (!c) return;
+    cfg = c; host = li;
+    li.classList.add("wx-on");
+    li.appendChild(canvas);
+    canvas.style.display = "block";
+    var r = li.getBoundingClientRect();
+    W = r.width; H = r.height;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    seed();
+    raf = requestAnimationFrame(frame);
+  }
+
+  function rowOf(e) { return e.target && e.target.closest ? e.target.closest(".city") : null; }
+
+  var list = document.getElementById("cityList");
+  if (!list) return;
+
+  list.addEventListener("pointerover", function (e) {
+    if (e.pointerType === "touch") return;
+    var li = rowOf(e);
+    if (li) start(li);
+  });
+  list.addEventListener("pointerleave", function (e) {
+    if (e.pointerType !== "touch") stop();
+  });
+  list.addEventListener("pointerdown", function (e) {   // phones: tap to play ~6s
+    if (e.pointerType !== "touch") return;
+    var li = rowOf(e);
+    if (!li) return;
+    if (host === li) { stop(); return; }
+    start(li);
+    if (host) tapOff = setTimeout(stop, 6000);
+  });
 })();
 </script>
