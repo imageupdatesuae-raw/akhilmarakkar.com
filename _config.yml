@@ -1,26 +1,15 @@
-title: Akhil Marakkar
-description: Notes on life, philosophy, and building things I wasn't trained to build.
+title: akhilmarakkar.com
+description: Weather, where I remember things.
 url: "https://akhilmarakkar.com"
 baseurl: ""
-author: Akhil Marakkar
 lang: en
 timezone: Asia/Dubai
-permalink: /:year/:title/
 markdown: kramdown
 kramdown:
   input: GFM
   syntax_highlighter: rouge
 plugins:
-  - jekyll-feed
   - jekyll-seo-tag
-feed:
-  path: feed.xml
-defaults:
-  - scope:
-      path: ""
-      type: posts
-    values:
-      layout: post
 exclude:
   - README.md
   - Gemfile

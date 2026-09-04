@@ -35,42 +35,28 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .nav a { color: var(--muted); }
 .nav a:hover, .nav a[aria-current="page"] { color: var(--text); text-decoration: none; }
 
-/* home intro */
-.intro { padding: 48px 0 20px; }
-.intro h1 { font-family: var(--mono); font-weight: 600; font-size: 28px; line-height: 1.25; margin: 0 0 12px; letter-spacing: -.01em; }
-.intro h1 .hl { color: var(--accent); }
-.intro p { color: var(--muted); margin: 0; max-width: 560px; }
-.intro .meta { font-family: var(--mono); font-size: 12.5px; color: var(--muted); margin-top: 18px; }
-.intro .meta span + span::before { content: "·"; margin: 0 10px; color: var(--line); }
-
-/* post list */
-.posts { list-style: none; margin: 28px 0 60px; padding: 0; border-top: 1px solid var(--line); }
-.posts li { display: grid; grid-template-columns: 110px 1fr; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
-.posts time { font-family: var(--mono); font-size: 12.5px; color: var(--muted); white-space: nowrap; }
-.posts .t { font-size: 18px; font-weight: 600; color: var(--text); }
-.posts .t:hover { color: var(--accent); text-decoration: none; }
-.posts .x { display: block; color: var(--muted); font-size: 15px; margin-top: 4px; }
-@media (max-width: 520px) { .posts li { grid-template-columns: 1fr; gap: 4px; } }
-
-/* post page */
-.post { padding: 44px 0 60px; }
-.post-head { margin-bottom: 30px; }
-.post-head .kicker { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
-.post-head .kicker b { color: var(--accent-2); font-weight: 500; }
-.post-head h1 { font-size: 34px; line-height: 1.2; letter-spacing: -.015em; margin: 8px 0 0; }
-.post-body { font-size: 18px; }
-.post-body h2 { font-size: 22px; margin: 40px 0 10px; letter-spacing: -.01em; }
-.post-body h3 { font-size: 18px; margin: 30px 0 8px; font-family: var(--mono); font-weight: 600; }
-.post-body p { margin: 0 0 20px; }
-.post-body blockquote { margin: 24px 0; padding: 4px 0 4px 18px; border-left: 2px solid var(--accent); color: #b8c3cf; font-style: italic; }
-.post-body code { font-family: var(--mono); font-size: .88em; background: var(--bg-2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
-.post-body pre { background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font-size: 14px; line-height: 1.55; }
-.post-body pre code { border: 0; padding: 0; background: none; font-size: inherit; }
-.post-body img { max-width: 100%; border-radius: 8px; border: 1px solid var(--line); }
-.post-body hr { border: 0; border-top: 1px solid var(--line); margin: 36px 0; }
-.post-body ul, .post-body ol { padding-left: 24px; margin: 0 0 20px; }
-.post-body li { margin-bottom: 6px; }
-.post-foot { margin-top: 44px; padding-top: 20px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+/* places / weather */
+.places { padding: 46px 0 40px; }
+.places h1 { font-family: var(--mono); font-weight: 500; font-size: 21px; line-height: 1.4; margin: 0 0 34px; letter-spacing: -.01em; color: var(--muted); }
+.city-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.city { display: grid; grid-template-columns: 1fr auto 132px 62px; align-items: baseline; gap: 14px;
+        padding: 15px 0; border-bottom: 1px solid var(--line); font-family: var(--mono); opacity: .45; transition: opacity .5s ease; }
+.city.live { opacity: 1; }
+.city .nm { font-size: 17px; font-weight: 500; color: var(--text); letter-spacing: -.01em; }
+.city .tm { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.city .cond { font-size: 13px; color: var(--muted); text-align: left; }
+.city .tp { font-size: 19px; font-weight: 600; color: var(--accent); text-align: right; font-variant-numeric: tabular-nums; }
+.city.night .tp { color: #8fa6d8; }
+.city.night .nm { color: #b8c3cf; }
+.places-note { margin-top: 20px; font-family: var(--mono); font-size: 12px; color: #4a5666; }
+@media (max-width: 560px) {
+  .places h1 { font-size: 18px; }
+  .city { grid-template-columns: 1fr 58px; grid-template-areas: "nm tp" "meta tp"; gap: 2px 10px; }
+  .city .nm { grid-area: nm; }
+  .city .tm { grid-area: meta; }
+  .city .cond { grid-area: meta; margin-left: 62px; }
+  .city .tp { grid-area: tp; align-self: center; }
+}
 
 /* footer */
 .site-foot { border-top: 1px solid var(--line); padding: 26px 0 40px; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }

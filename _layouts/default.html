@@ -3,21 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if page.title %}{{ page.title }} — {{ site.title }}{% else %}{{ site.title }}{% endif %}</title>
+  <title>{{ site.title }}</title>
   <link rel="stylesheet" href="{{ '/assets/style.css' | relative_url }}">
-  <link rel="alternate" type="application/rss+xml" title="{{ site.title }}" href="{{ '/feed.xml' | relative_url }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   {% seo title=false %}
 </head>
 <body>
   <header class="site-head">
     <div class="wrap">
-      <a class="brand" href="{{ '/' | relative_url }}"><span class="dollar">$</span>akhilmarakkar<span class="cursor" aria-hidden="true"></span></a>
-      <nav class="nav">
-        <a href="{{ '/' | relative_url }}" {% if page.url == '/' %}aria-current="page"{% endif %}>writing</a>
-        <a href="{{ '/feed.xml' | relative_url }}">rss</a>
-      </nav>
+      <span class="brand"><span class="dollar">$</span>akhilmarakkar<span class="cursor" aria-hidden="true"></span></span>
     </div>
   </header>
   <main class="wrap">
@@ -25,8 +20,7 @@
   </main>
   <footer class="site-foot">
     <div class="wrap">
-      <span>© {{ 'now' | date: '%Y' }} Akhil Marakkar · Sharjah / Kerala</span>
-      <span>built by hand, with a lot of AI</span>
+      <span>akhilmarakkar.com</span>
     </div>
   </footer>
 </body>
